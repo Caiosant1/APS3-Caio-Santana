@@ -1,0 +1,33 @@
+stateDiagram-v2
+    [*] --> Solicitada : solicitarReserva [dadosValidos] / validarSolicitacao()
+
+    Solicitada --> PendenteAprovacao : verificarConflitos [semConflito e maquinaDisponivel] / salvarReserva()
+    Solicitada --> NaFila : verificarConflitos [temConflito e maquinaDisponivel] / adicionarNaFila()
+    Solicitada --> Recusada : verificarDisponibilidade [maquinaIndisponivel] / publicarEvento()
+
+    state NaFila {
+        [*] --> Aguardando
+        Aguardando --> Reordenada : reordenar [perfil == ADMIN e casoExcepcional] / registrarMotivo()
+        Reordenada --> Aguardando : recalcular / atualizarPosicoes()
+    }
+
+    Aguardando : entry / calcularPosicao()
+    Aguardando : do / monitorarFila()
+    Aguardando : exit / liberarPosicao()
+
+    NaFila --> PendenteAprovacao : promoverProximo [posicao == 1 e maquinaLivre] / atualizarStatus()
+    NaFila --> Cancelada : cancelar [solicitanteDono] / removerDaFila()
+
+    PendenteAprovacao : entry / notificarAdministrador()
+    PendenteAprovacao --> Aprovada : aprovar [perfil == ADMIN] / notificarSolicitante()
+    PendenteAprovacao --> Negada : negar [justificativa nao vazia] / registrarJustificativa()
+    PendenteAprovacao --> Cancelada : cancelar [solicitanteDono] / liberarHorario()
+
+    Aprovada --> EmUso : iniciarUso [horaAtual >= inicio] / registrarInicio()
+    Aprovada --> Cancelada : cancelar [antesDoInicio] / liberarHorario()
+    EmUso --> Concluida : finalizarUso / registrarConsumo()
+
+    Recusada --> [*]
+    Negada --> [*]
+    Cancelada --> [*]
+    Concluida --> [*]

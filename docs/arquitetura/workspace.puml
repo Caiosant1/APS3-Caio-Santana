@@ -1,0 +1,36 @@
+@startuml
+!include <C4/C4_Component>
+
+title Componentes - Fila de Prioridade (FabLab Manager) - C4 Nível 3
+
+Person(solicitante, "Solicitante", "Usuário acadêmico ou de projeto industrial")
+Person(admin, "Administrador/Técnico", "Aprova, nega e reordena reservas")
+
+Container(front, "Front-end Web", "React", "Telas de reserva e consulta de fila")
+
+Container_Boundary(api, "API Back-End (Node.js + Express)") {
+    Component(ctrl, "ReservaController", "Express Router", "Recebe as requisições HTTP de reserva e fila")
+    Component(rsvc, "ReservaService", "Classe JavaScript", "Orquestra o fluxo de reserva")
+    Component(disp, "DisponibilidadeService", "Classe JavaScript", "Verifica estado e disponibilidade da máquina")
+    Component(fila, "FilaPrioridadeService", "Classe JavaScript", "Aplica regra de prioridade, calcula posições e reordena")
+    Component(repo, "ReservaRepository", "Classe JavaScript", "Acesso aos dados de reservas e fila")
+    Component(pub, "NotificacaoPublisher", "amqplib", "Publica eventos de notificação")
+}
+
+ContainerDb(db, "Banco de Dados", "PostgreSQL 16", "Reservas, posições na fila, máquinas")
+ContainerQueue(mq, "Mensageria", "RabbitMQ", "Fila de eventos de notificação")
+System_Ext(notif, "Serviço de Notificação", "Envia avisos aos envolvidos")
+
+Rel(solicitante, front, "Usa", "HTTPS")
+Rel(admin, front, "Usa", "HTTPS")
+Rel(front, ctrl, "Chama", "REST/JSON sobre HTTPS")
+Rel(ctrl, rsvc, "criarReserva()", "Chamada síncrona")
+Rel(rsvc, disp, "verificarDisponibilidade()", "Chamada síncrona")
+Rel(rsvc, repo, "buscarConflitos(), salvar()", "Chamada síncrona")
+Rel(rsvc, fila, "adicionarNaFila()", "Chamada síncrona")
+Rel(fila, repo, "atualizarPosicao()", "Chamada síncrona")
+Rel(rsvc, pub, "publicarEvento()", "Chamada assíncrona")
+Rel(repo, db, "Lê e grava", "SQL / TCP")
+Rel(pub, mq, "Publica evento", "AMQP")
+Rel(mq, notif, "Entrega evento", "AMQP")
+@enduml

@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    actor U as Solicitante
+    participant C as ReservaController
+    participant S as ReservaService
+    participant D as DisponibilidadeService
+    participant R as ReservaRepository
+    participant F as FilaPrioridadeService
+    participant N as NotificacaoPublisher
+
+    U->>C: solicitarReserva(SolicitacaoReservaDTO)
+    C->>S: criarReserva(SolicitacaoReservaDTO)
+    S->>D: verificarDisponibilidade(maquinaId, periodo)
+    D-->>S: DisponibilidadeDTO
+
+    alt máquina indisponível (reservada, em uso ou em manutenção)
+        S-->>C: ReservaResponseDTO (status = RECUSADA)
+    else máquina disponível
+        S->>R: buscarConflitos(maquinaId, periodo)
+        R-->>S: List~Reserva~
+
+        alt sem conflito de horário
+            S->>R: salvar(reserva = PENDENTE_APROVACAO)
+            R-->>S: Reserva
+        else conflito de horário
+            S->>F: adicionarNaFila(reserva, conflitos)
+            loop para cada reserva da fila, em ordem de prioridade
+                F->>R: atualizarPosicao(reservaId, posicao)
+                R-->>F: Reserva
+            end
+            F-->>S: PosicaoFilaDTO
+        end
+
+        S-)N: publicarEvento(EventoNotificacaoDTO)
+        S-->>C: ReservaResponseDTO
+    end
+
+    C-->>U: ReservaResponseDTO

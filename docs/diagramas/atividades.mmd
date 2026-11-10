@@ -1,0 +1,62 @@
+flowchart TD
+    INI(("●"))
+
+    subgraph L1["Raia 1 - Solicitante"]
+        A1["Solicitar reserva da máquina"]
+        A2["Consultar posição na fila"]
+    end
+
+    subgraph L2["Raia 2 - Sistema Back-End"]
+        B1["Validar perfil e dados da solicitação"]
+        B2["Verificar estado da máquina"]
+        B3{"Máquina disponível?"}
+        B4["Recusar solicitação (status RECUSADA)"]
+        B5["Buscar conflitos de horário"]
+        B6{"Há conflito?"}
+        B7["Criar reserva PENDENTE_APROVACAO"]
+        B8["Criar reserva EM_FILA"]
+        FORK["━━ FORK ━━"]
+        B9["Aplicar regra de prioridade e recalcular posições"]
+        JOIN["━━ JOIN ━━"]
+        B10["Aguardar promoção: 1ª posição e máquina livre"]
+    end
+
+    subgraph L3["Raia 3 - Administrador/Técnico"]
+        C1["Analisar reserva"]
+        C2{"Decisão do administrador"}
+        C3["Aprovar reserva"]
+        C4["Negar reserva e registrar justificativa"]
+    end
+
+    subgraph L4["Raia 4 - Serviço de Notificação"]
+        D1["Enviar notificação ao solicitante"]
+    end
+
+    FIM1(("◉"))
+    FIM2(("◉"))
+    FIM3(("◉"))
+
+    INI --> A1 --> B1 --> B2 --> B3
+    B3 -->|"[estado == DISPONIVEL]"| B5
+    B3 -->|"[estado != DISPONIVEL]"| B4
+    B4 --> FIM3
+    B5 --> B6
+    B6 -->|"[qtdConflitos == 0]"| B7
+    B6 -->|"[qtdConflitos > 0]"| B8
+    B7 --> C1
+    B8 --> FORK
+    FORK --> B9
+    FORK --> D1
+    B9 --> JOIN
+    D1 --> JOIN
+    JOIN --> A2
+    A2 --> B10
+    B10 --> C1
+    C1 --> C2
+    C2 -->|"[decisao == APROVAR]"| C3
+    C2 -->|"[decisao == NEGAR]"| C4
+    C3 --> FIM1
+    C4 --> FIM2
+
+    style FORK fill:#000,stroke:#000,color:#fff
+    style JOIN fill:#000,stroke:#000,color:#fff
